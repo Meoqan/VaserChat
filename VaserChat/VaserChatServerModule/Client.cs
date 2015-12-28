@@ -14,14 +14,14 @@ namespace VaserChatServerModule
         public static List<Client> ClientList = new List<Client>();
 
         public Link lnk;
-        public int ID = -1;
+        public uint ID = 0;
         public string Username = "NONE";
 
-        public static void BCastContainer(Container con,int ContainerID)
+        public static void BCastContainer(Container con, ushort ContainerID)
         {
-            foreach(Client c in  ClientList)
+            foreach (Client c in ClientList)
             {
-                if(c.Username != "NONE") OPTIONS.Chat.SendContainer(c.lnk,con, ContainerID, c.ID);
+                if (c.Username != "NONE") OPTIONS.Chat.SendContainer(c.lnk, con, ContainerID, c.ID);
             }
         }
     }

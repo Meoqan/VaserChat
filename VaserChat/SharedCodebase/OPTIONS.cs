@@ -9,16 +9,54 @@ namespace Global
 {
     public class OPTIONS
     {
+        public static PortalCollection PColl = null;
         public static Portal Login;
         public static Portal Chat;
 
-        public static int clientID;
-        public static Link Connection;
+        private static object _ThreadLock = new object();
+        private static uint _clientID = 0;
+        public static uint clientID
+        {
+            get
+            {
+                lock (_ThreadLock)
+                {
+                    return _clientID;
+                }
+            }
+            set
+            {
+                lock (_ThreadLock)
+                {
+                    _clientID = value;
+                }
+            }
+        }
+
+        private static Link _Connection;
+        public static Link Connection
+        {
+            get
+            {
+                lock (_ThreadLock)
+                {
+                    return _Connection;
+                }
+            }
+            set
+            {
+                lock (_ThreadLock)
+                {
+                    _Connection = value;
+                }
+            }
+        }
 
         public static void init()
         {
-            Login = new Portal();
-            Chat = new Portal();
-    }
+            PColl = new PortalCollection();
+            Login = PColl.CreatePortal(100);
+            Chat = PColl.CreatePortal(101);
+        }
     }
 }

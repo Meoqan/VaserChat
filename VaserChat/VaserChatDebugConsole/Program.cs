@@ -12,7 +12,9 @@ namespace VaserChatDebugConsole
         static void Main(string[] args)
         {
 
-            Server.Run();
+            Server.Start();
+            Console.ReadKey();
+            Server.Stop();
         }
     }
 }

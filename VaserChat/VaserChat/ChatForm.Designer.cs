@@ -28,7 +28,6 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.tv_userlist = new System.Windows.Forms.TreeView();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
@@ -36,7 +35,6 @@
             this.tb_input = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.rtb_output = new System.Windows.Forms.RichTextBox();
-            this.t_doNet = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -131,11 +129,6 @@
             this.rtb_output.TabIndex = 1;
             this.rtb_output.Text = "";
             // 
-            // t_doNet
-            // 
-            this.t_doNet.Enabled = true;
-            this.t_doNet.Tick += new System.EventHandler(this.t_doNet_Tick);
-            // 
             // ChatForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
@@ -165,6 +158,5 @@
         private System.Windows.Forms.TextBox tb_input;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.RichTextBox rtb_output;
-        private System.Windows.Forms.Timer t_doNet;
     }
 }

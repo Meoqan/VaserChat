@@ -6,186 +6,173 @@ using System.Threading.Tasks;
 using Vaser;
 using Global;
 using System.Threading;
+using System.Diagnostics;
 
 namespace VaserChatServerModule
 {
     public class Server
     {
-        static volatile bool online = true;
         static IDPool myPool = new IDPool(10000);
+        static VaserServer ChatServer = null;
 
         public static void Stop()
         {
-            online = false;
+            if (ChatServer != null)
+            {
+                Console.WriteLine("VaserChat Server is closing...");
+
+                //Teardown
+                myPool = new IDPool(10000);
+                Client.ClientList.Clear();
+
+                //close the server
+                ChatServer.Stop();
+
+                ChatServer = null;
+            }
         }
 
         public static void Start()
         {
-            new Thread(Run).Start();
-        }
-
-        public static void Run()
-        {
             Console.WriteLine("VaserChat Server is starting...");
-            
+
             //initialize the server
             OPTIONS.init();
-            //start the server
-            VaserServer ChatServer = new VaserServer(System.Net.IPAddress.Any, 3100, VaserOptions.ModeKerberos);
 
-            //create connection managing lists
-            List<Client> Removelist = new List<Client>();
+            OPTIONS.Login.IncomingPacket += OnLoginPacket;
+            OPTIONS.Chat.IncomingPacket += OnChatPacket;
+
+            //start the server
+            ChatServer = new VaserServer(System.Net.IPAddress.Any, 3100, VaserOptions.ModeNotEncrypted, OPTIONS.PColl);
+            ChatServer.NewLink += OnNewLink;
+            ChatServer.DisconnectingLink += OnDisconnectingLink;
 
             Console.WriteLine("VaserChat Server has started.");
-            //run the server
-            while (online)
+        }
+
+        static void OnDisconnectingLink(object p, LinkEventArgs e)
+        {
+            Client c = (Client)e.lnk.AttachedObject;
+            Client.ClientList.Remove(c);
+            Client.ClientArray[c.ID] = null;
+
+            //BCast Send disconnect
+            SEND_USER.suCont.StatusID = STATUS.USER_DISCONNECT;
+            SEND_USER.suCont.UserID = c.ID;
+            SEND_USER.suCont.Username = c.Username;
+            Client.BCastContainer(SEND_USER.suCont, SEND_USER.ContID);
+
+            myPool.DisposeID(c.ID);
+
+            //free all resources
+            c.lnk.Dispose();
+            Console.WriteLine("Client disconnected from IP: " + c.lnk.IPv4Address);
+
+            //send all bufferd data to the clients
+            Portal.Finialize();
+        }
+
+        static void OnNewLink(object p, LinkEventArgs e)
+        {
+            Console.WriteLine("Client connected from IP: " + e.lnk.IPv4Address);
+
+            e.lnk.Accept();
+
+
+            Client C1 = new Client();
+            C1.ID = myPool.GetFreeID();
+            C1.lnk = e.lnk;
+            Client.ClientList.Add(C1);
+            Client.ClientArray[C1.ID] = C1;
+
+            e.lnk.AttachedID = C1.ID;
+            e.lnk.AttachedObject = C1;
+
+            //send all bufferd data to the clients
+            Portal.Finialize();
+        }
+
+        static void OnLoginPacket(object p, PacketEventArgs e)
+        {
+            Debug.WriteLine("SEND_LOGIN Packet");
+            //unpack the packet, true if the decode was successful
+            if (SEND_LOGIN.ContID == e.pak.ContainerID && SEND_LOGIN.slCont.UnpackContainer(e.pak, OPTIONS.Login))
             {
-                //accept new client
-                Link lnk1 = ChatServer.GetNewLink();
-                if (lnk1 != null)
-                {
-                    Console.WriteLine("Client connected from IP: " + lnk1.IPv4Address);
-                    
-                    lnk1.Accept();
+                Client c = (Client)e.lnk.AttachedObject;
 
-
-                    Client C1 = new Client();
-                    C1.ID = myPool.GetFreeID();
-                    C1.lnk = lnk1;
-                    Client.ClientList.Add(C1);
-                    Client.ClientArray[C1.ID] = C1;
-                }
-                
-                //proceed incoming login data
-                foreach (Packet_Recv pak in OPTIONS.Login.GetPakets())
+                if (c.Username == "NONE" && SEND_LOGIN.slCont.Username != "NONE" && SEND_LOGIN.slCont.Username.Length > 2 && SEND_LOGIN.slCont.Username.Length < 25)
                 {
-                    
-                    //unpack the packet, true if the decode was successful
-                    if (SEND_LOGIN.ContID == pak.ContainerID && SEND_LOGIN.slCont.UnpackContainer(pak, OPTIONS.Login))
+                    c.Username = SEND_LOGIN.slCont.Username;
+
+                    //Send ID & OK
+                    OPTIONS.Login.SendContainer(c.lnk, null, STATUS.LOGIN_OK, c.ID);
+
+                    foreach (Client c2 in Client.ClientList)
                     {
-                        foreach (Client c in Client.ClientList)
+                        if (c != c2)
                         {
-                            if (c.lnk == pak.link)
-                            {
-                                if (c.Username == "NONE" && SEND_LOGIN.slCont.Username != "NONE" && SEND_LOGIN.slCont.Username.Length > 2 && SEND_LOGIN.slCont.Username.Length < 25)
-                                {
-                                    c.Username = SEND_LOGIN.slCont.Username;
-                                    
-                                    //Send ID & OK
-                                    OPTIONS.Login.SendContainer(c.lnk, null, STATUS.LOGIN_OK, c.ID);
-
-                                    foreach(Client c2 in Client.ClientList)
-                                    {
-                                        if (c != c2)
-                                        {
-                                            SEND_USER.suCont.StatusID = STATUS.USER_NEW;
-                                            SEND_USER.suCont.UserID = c2.ID;
-                                            SEND_USER.suCont.Username = c2.Username;
-                                            OPTIONS.Chat.SendContainer(c.lnk, SEND_USER.suCont, SEND_USER.ContID, c2.ID);
-                                        }
-                                    }
-
-                                    //BCast new client
-                                    SEND_USER.suCont.StatusID = STATUS.USER_NEW;
-                                    SEND_USER.suCont.UserID = c.ID;
-                                    SEND_USER.suCont.Username = c.Username;
-                                    Client.BCastContainer(SEND_USER.suCont,SEND_USER.ContID);
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Login error > Username invalid " + pak.link.IPv4Address);
-                                    pak.link.Dispose();
-                                }
-                            }
+                            SEND_USER.suCont.StatusID = STATUS.USER_NEW;
+                            SEND_USER.suCont.UserID = c2.ID;
+                            SEND_USER.suCont.Username = c2.Username;
+                            OPTIONS.Chat.SendContainer(c.lnk, SEND_USER.suCont, SEND_USER.ContID, c2.ID);
                         }
-                        
                     }
-                    else
-                    {
-                        Console.WriteLine("Login error > Disconnecting "+pak.link.IPv4Address);
-                        pak.link.Dispose();
-                    }
-                }
 
-                //proceed incoming chat data
-                foreach (Packet_Recv pak in OPTIONS.Chat.GetPakets())
-                {
-                    try
-                    {
-                        Client c = Client.ClientArray[pak.ObjectID];
-                        if (c.lnk == pak.link)
-                        {
-                            switch(pak.ContainerID)
-                            {
-                                case SEND_MESSAGE.ContID:
-                                    if(SEND_MESSAGE.smCont.UnpackContainer(pak,OPTIONS.Chat))
-                                    {
-                                        SEND_MESSAGE.smCont.UserID = c.ID;
-                                        Client.BCastContainer(SEND_MESSAGE.smCont,SEND_MESSAGE.ContID);
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine("Chat error > packet decode error > " + c.Username + " > " + pak.link.IPv4Address);
-                                        pak.link.Dispose();
-                                    }
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("Chat error > packet (IP) dows not belong to the client (Username) > " + c.Username + " > " + pak.link.IPv4Address);
-                            pak.link.Dispose();
-                        }
-                    }catch(Exception ex)
-                    {
-                        Console.WriteLine("Chat error > " + ex.ToString() + " > " + pak.link.IPv4Address);
-                        pak.link.Dispose();
-                    }
-                }
-
-                //send all bufferd data to the clients
-                Portal.Finialize();
-                
-                //disconnet clients
-                foreach (Client c in Client.ClientList)
-                {
-                    if (!c.lnk.IsConnected) Removelist.Add(c);
-                }
-
-                foreach (Client c in Removelist)
-                {
-                    Client.ClientList.Remove(c);
-                    Client.ClientArray[c.ID] = null;
-
-                    //BCast Send disconnect
-                    SEND_USER.suCont.StatusID = STATUS.USER_DISCONNECT;
+                    //BCast new client
+                    SEND_USER.suCont.StatusID = STATUS.USER_NEW;
                     SEND_USER.suCont.UserID = c.ID;
                     SEND_USER.suCont.Username = c.Username;
                     Client.BCastContainer(SEND_USER.suCont, SEND_USER.ContID);
 
-                    myPool.DisposeID(c.ID);
-
-                    //free all resources
-                    c.lnk.Dispose();
-                    Console.WriteLine("Client disconnected from IP: " + c.lnk.IPv4Address);
+                    Portal.Finialize();
                 }
-                Removelist.Clear();
+                else
+                {
+                    Console.WriteLine("Login error > Username invalid " + e.pak.link.IPv4Address);
+                    e.pak.link.Dispose();
+                }
 
-                Thread.Sleep(1);
+
             }
-
-
-            //Teardown
-            foreach (Client c in Client.ClientList)
+            else
             {
-                c.lnk.Dispose();
+                Console.WriteLine("Login error > Disconnecting " + e.pak.link.IPv4Address);
+                e.pak.link.Dispose();
             }
-            Client.ClientList.Clear();
-
-            //close the server
-            ChatServer.Stop();
-
-            online = false;
         }
+
+        static void OnChatPacket(object p, PacketEventArgs e)
+        {
+
+            try
+            {
+                Client c = (Client)e.lnk.AttachedObject;
+                switch (e.pak.ContainerID)
+                {
+                    case SEND_MESSAGE.ContID:
+                        Debug.WriteLine("SEND_MESSAGE Packet");
+                        if (SEND_MESSAGE.smCont.UnpackContainer(e.pak, OPTIONS.Chat))
+                        {
+                            SEND_MESSAGE.smCont.UserID = c.ID;
+                            Client.BCastContainer(SEND_MESSAGE.smCont, SEND_MESSAGE.ContID);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Chat error > packet decode error > " + c.Username + " > " + e.pak.link.IPv4Address);
+                            e.pak.link.Dispose();
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Chat error > " + ex.ToString() + " > " + e.pak.link.IPv4Address);
+                e.pak.link.Dispose();
+            }
+
+            //send all bufferd data to the clients
+            Portal.Finialize();
+        }
+
     }
 }
