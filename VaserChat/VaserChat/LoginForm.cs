@@ -53,8 +53,6 @@ namespace VaserChat
 
             SEND_LOGIN.slCont.Username = tb_Username.Text;
             OPTIONS.Login.SendContainer(OPTIONS.Connection, SEND_LOGIN.slCont, SEND_LOGIN.ContID, 0);
-            Portal.Finialize();
-
         }
 
 
@@ -116,9 +114,6 @@ namespace VaserChat
                     OpenChatwindow();
                 }
             }
-
-            Portal.Finialize();
-
         }
     }
 }

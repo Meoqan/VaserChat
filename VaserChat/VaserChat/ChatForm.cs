@@ -60,7 +60,6 @@ namespace VaserChat
                 //Send Chat Message
                 SEND_MESSAGE.smCont.Message = tb_input.Text;
                 OPTIONS.Chat.SendContainer(OPTIONS.Connection, SEND_MESSAGE.smCont, SEND_MESSAGE.ContID, OPTIONS.clientID);
-                Portal.Finialize();
 
                 tb_input.Text = string.Empty;
 
@@ -180,9 +179,6 @@ namespace VaserChat
                     }
                     break;
             }
-
-            Portal.Finialize();
-
         }
 
         private void ChatForm_FormClosed(object sender, FormClosedEventArgs e)

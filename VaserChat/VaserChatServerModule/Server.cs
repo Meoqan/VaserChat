@@ -67,9 +67,6 @@ namespace VaserChatServerModule
             //free all resources
             c.lnk.Dispose();
             Console.WriteLine("Client disconnected from IP: " + c.lnk.IPv4Address);
-
-            //send all bufferd data to the clients
-            Portal.Finialize();
         }
 
         static void OnNewLink(object p, LinkEventArgs e)
@@ -88,8 +85,6 @@ namespace VaserChatServerModule
             e.lnk.AttachedID = C1.ID;
             e.lnk.AttachedObject = C1;
 
-            //send all bufferd data to the clients
-            Portal.Finialize();
         }
 
         static void OnLoginPacket(object p, PacketEventArgs e)
@@ -123,8 +118,6 @@ namespace VaserChatServerModule
                     SEND_USER.suCont.UserID = c.ID;
                     SEND_USER.suCont.Username = c.Username;
                     Client.BCastContainer(SEND_USER.suCont, SEND_USER.ContID);
-
-                    Portal.Finialize();
                 }
                 else
                 {
@@ -169,9 +162,6 @@ namespace VaserChatServerModule
                 Console.WriteLine("Chat error > " + ex.ToString() + " > " + e.pak.link.IPv4Address);
                 e.pak.link.Dispose();
             }
-
-            //send all bufferd data to the clients
-            Portal.Finialize();
         }
 
     }

@@ -46,8 +46,8 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="Vaser, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Vaser.1.1.0.0-alpha2\lib\net45\Vaser.dll</HintPath>
+    <Reference Include="Vaser, Version=1.1.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Vaser.1.1.1.0\lib\net45\Vaser.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
