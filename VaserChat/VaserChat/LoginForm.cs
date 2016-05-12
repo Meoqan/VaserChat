@@ -7,9 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Vaser;
-using Global;
-
 
 namespace VaserChat
 {
@@ -20,10 +17,6 @@ namespace VaserChat
         public LoginForm()
         {
             InitializeComponent();
-
-            OPTIONS.init();
-            OPTIONS.Login.IncomingPacket += OnLoginPacket;
-
             form2 = new ChatForm();
         }
 
@@ -35,24 +28,9 @@ namespace VaserChat
                 return;
             }
 
-            try
-            {
-#if DEBUG
-                OPTIONS.Connection = VaserClient.ConnectClient("localhost", 3100, VaserOptions.ModeNotEncrypted, OPTIONS.PColl);
-                OPTIONS.Connection.Disconnecting += OnDisconnectingLink;
-#else
-                OPTIONS.Connection = VaserClient.ConnectClient(tb_ServerAddress.Text, 3100, VaserOptions.ModeNotEncrypted, OPTIONS.PColl);
-                OPTIONS.Connection.Disconnecting += OnDisconnectingLink;
-#endif
-            }
-            catch
-            {
-                MessageBox.Show("can't connect to " + tb_ServerAddress.Text);
-                return;
-            }
+            Networking.Connect(tb_Username.Text);
 
-            SEND_LOGIN.slCont.Username = tb_Username.Text;
-            OPTIONS.Login.SendContainer(OPTIONS.Connection, SEND_LOGIN.slCont, SEND_LOGIN.ContID, 0);
+
         }
 
 
@@ -76,42 +54,20 @@ namespace VaserChat
             OPTIONS.Connection = null;*/
         }
 
-        public void OnDisconnectingLink(object sender, LinkEventArgs e)
+        private void Cronjob_Tick(object sender, EventArgs e)
         {
-            MessageBox.Show("Lost Connection...");
-            if (OPTIONS.clientID != 0)
+            if (Networking.IncommingLogin.Count > 0)
             {
-                OPTIONS.clientID = 0;
-                //Reset chat
-                if (!this.IsDisposed)
-                {
-                    if (this.InvokeRequired)
-                    {
-                        this.Invoke(new Action(() => this.Close()));
-                    }
-                    else
-                    {
-                        this.Close();
-                    }
-                }
-            }
-        }
+                Message msg = Networking.IncommingLogin.Dequeue();
 
-        public void OnLoginPacket(object sender, PacketEventArgs e)
-        {
-
-            if (e.pak.ContainerID == 1)
-            {
-                OPTIONS.clientID = e.pak.ObjectID;
-
-                //open chat
-                if (this.InvokeRequired)
-                {
-                    this.Invoke(new Action(() => OpenChatwindow()));
-                }
-                else
+                if (msg.command == 1)
                 {
                     OpenChatwindow();
+                }
+
+                if (msg.command == 2)
+                {
+                    MessageBox.Show(msg.Messagedata);
                 }
             }
         }

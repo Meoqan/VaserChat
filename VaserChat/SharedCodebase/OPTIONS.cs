@@ -54,9 +54,12 @@ namespace Global
 
         public static void init()
         {
+            Login = new Portal(100);
+            Chat = new Portal(101);
+
             PColl = new PortalCollection();
-            Login = PColl.CreatePortal(100);
-            Chat = PColl.CreatePortal(101);
+            PColl.RegisterPortal(Login);
+            PColl.RegisterPortal(Chat);
         }
     }
 }
