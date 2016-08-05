@@ -69,8 +69,6 @@ namespace VaserChatServerModule
             //free all resources
             c.lnk.Dispose();
             Console.WriteLine("Client disconnected from IP: " + c.lnk.IPv4Address);
-
-            //send all bufferd data to the clients
         }
 
         static void OnNewLink(object p, LinkEventArgs e)
